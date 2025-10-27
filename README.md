@@ -1,12 +1,10 @@
 # reqtango
 A simple wrapper around the built-in Golang net/http library
 
-## Cloning
-- HTTPS
+## Import
 ```sh
-git clone https://github.com/JustBugLord/ZealyPulse.git
+go get github.com/JustBugLord/reqtango
 ```
-
 ## License
 
 Apache License 2.0
