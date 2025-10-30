@@ -2,10 +2,12 @@ package reqtango
 
 import (
 	"bytes"
+	"compress/gzip"
 	"errors"
 	"io"
 	"net/http"
 	"sort"
+	"strings"
 )
 
 type Response struct {
@@ -31,7 +33,7 @@ func (b *RequestBuilder) Get(url string, headers ...interface{}) (*Response, err
 }
 
 func (b *RequestBuilder) Post(url, body string, headers ...interface{}) (*Response, error) {
-	return b.SendRequest("POST", url, bytes.NewBufferString(body), headers...)
+	return b.SendRequest("POST", url, bytes.NewBuffer([]byte(body)), headers...)
 }
 
 func (b *RequestBuilder) SendRequest(method, url string, body io.Reader, headers ...interface{}) (*Response, error) {
@@ -44,7 +46,17 @@ func (b *RequestBuilder) SendRequest(method, url string, body io.Reader, headers
 	if err != nil {
 		return nil, errors.New("Fail request send: " + err.Error())
 	}
-	bodyResponse, err := io.ReadAll(resp.Body)
+
+	reader := resp.Body
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		reader, err = gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, errors.New("Fail gzip unpack: " + err.Error())
+		}
+		defer reader.Close()
+	}
+
+	bodyResponse, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, errors.New("Fail response body read: " + err.Error())
 	}
