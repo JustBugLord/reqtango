@@ -17,11 +17,11 @@ type Response struct {
 }
 
 type RequestBuilder struct {
-	DefaultHeaders map[string]string
+	DefaultHeaders *map[string]string
 	*http.Client
 }
 
-func NewRequestBuilder(defaultHeaders map[string]string) *RequestBuilder {
+func NewRequestBuilder(defaultHeaders *map[string]string) *RequestBuilder {
 	return &RequestBuilder{
 		defaultHeaders,
 		http.DefaultClient,
@@ -63,7 +63,7 @@ func (b *RequestBuilder) SendRequest(method, url string, body io.Reader, headers
 }
 
 func (b *RequestBuilder) formRequestHeaders(request *http.Request, headers ...interface{}) {
-	for key, value := range b.DefaultHeaders {
+	for key, value := range *b.DefaultHeaders {
 		request.Header.Set(key, value)
 	}
 	b.appendFields(request, headers)
