@@ -21,6 +21,12 @@ type RequestBuilder struct {
 	*http.Client
 }
 
+func NewRequestBuilderSimple() *RequestBuilder {
+	return &RequestBuilder{
+		Client: http.DefaultClient,
+	}
+}
+
 func NewRequestBuilder(defaultHeaders map[string]string) *RequestBuilder {
 	return &RequestBuilder{
 		defaultHeaders,
@@ -45,21 +51,21 @@ func (b *RequestBuilder) Post(url, body string, headers ...interface{}) (*Respon
 func (b *RequestBuilder) SendRequest(method, url string, body io.Reader, headers ...interface{}) (*Response, error) {
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
-		return nil, errors.New("Fail request build: " + err.Error())
+		return nil, errors.New("fail request build: " + err.Error())
 	}
 	b.formRequestHeaders(req, headers)
 	resp, err := b.Do(req)
 	if err != nil {
-		return nil, errors.New("Fail request send: " + err.Error())
+		return nil, errors.New("fail request send: " + err.Error())
 	}
 
 	reader, err := httpdecompressor.Reader(resp)
 	if err != nil {
-		return nil, errors.New("Fail request decompress: " + err.Error())
+		return nil, errors.New("fail request decompress: " + err.Error())
 	}
 	bodyResponse, err := io.ReadAll(reader)
 	if err != nil {
-		return nil, errors.New("Fail response body read: " + err.Error())
+		return nil, errors.New("fail response body read: " + err.Error())
 	}
 	return &Response{
 		Status:     resp.Status,
