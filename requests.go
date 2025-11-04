@@ -17,26 +17,30 @@ type Response struct {
 }
 
 type RequestBuilder struct {
-	DefaultHeaders map[string]string
+	DefaultHeaders *map[string]string
 	*http.Client
 }
 
 func NewRequestBuilderSimple() *RequestBuilder {
-	return &RequestBuilder{
-		Client: http.DefaultClient,
-	}
+	return NewRequestBuilder(nil)
 }
 
 func NewRequestBuilder(defaultHeaders map[string]string) *RequestBuilder {
+	if defaultHeaders == nil {
+		defaultHeaders = make(map[string]string)
+	}
 	return &RequestBuilder{
-		defaultHeaders,
+		&defaultHeaders,
 		http.DefaultClient,
 	}
 }
 
-func (b *RequestBuilder) AddHeaders(headers map[string]string) {
+func (b *RequestBuilder) Headers(headers map[string]string) {
+	if headers == nil {
+		return
+	}
 	for k, v := range headers {
-		b.DefaultHeaders[k] = v
+		(*b.DefaultHeaders)[k] = v
 	}
 }
 
@@ -53,16 +57,19 @@ func (b *RequestBuilder) SendRequest(method, url string, body io.Reader, headers
 	if err != nil {
 		return nil, errors.New("fail request build: " + err.Error())
 	}
+	defer req.Body.Close()
 	b.formRequestHeaders(req, headers)
 	resp, err := b.Do(req)
 	if err != nil {
 		return nil, errors.New("fail request send: " + err.Error())
 	}
+	defer resp.Body.Close()
 
 	reader, err := httpdecompressor.Reader(resp)
 	if err != nil {
 		return nil, errors.New("fail request decompress: " + err.Error())
 	}
+	defer reader.Close()
 	bodyResponse, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, errors.New("fail response body read: " + err.Error())
@@ -75,7 +82,7 @@ func (b *RequestBuilder) SendRequest(method, url string, body io.Reader, headers
 }
 
 func (b *RequestBuilder) formRequestHeaders(request *http.Request, headers ...interface{}) {
-	for key, value := range b.DefaultHeaders {
+	for key, value := range *b.DefaultHeaders {
 		request.Header.Set(key, value)
 	}
 	b.appendFields(request, headers)
