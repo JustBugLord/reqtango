@@ -35,7 +35,7 @@ func NewRequestBuilder(defaultHeaders map[string]string) *RequestBuilder {
 	}
 }
 
-func (b *RequestBuilder) Headers(headers map[string]string) {
+func (b *RequestBuilder) SetHeaders(headers map[string]string) {
 	if headers == nil {
 		return
 	}
@@ -57,7 +57,6 @@ func (b *RequestBuilder) SendRequest(method, url string, body io.Reader, headers
 	if err != nil {
 		return nil, errors.New("fail request build: " + err.Error())
 	}
-	defer req.Body.Close()
 	b.formRequestHeaders(req, headers)
 	resp, err := b.Do(req)
 	if err != nil {
