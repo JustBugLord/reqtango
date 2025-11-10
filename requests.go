@@ -2,6 +2,7 @@ package reqtango
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -50,36 +51,63 @@ func (b *RequestBuilder) Get(url string, headers ...interface{}) (*Response, err
 	return b.SendRequest("GET", url, nil, headers...)
 }
 
+func (b *RequestBuilder) GetToStruct(url string, to any, headers ...interface{}) error {
+	return b.SendRequestToStruct("GET", url, nil, to, headers...)
+}
+
 func (b *RequestBuilder) Post(url, body string, headers ...interface{}) (*Response, error) {
 	return b.SendRequest("POST", url, bytes.NewBuffer([]byte(body)), headers...)
 }
 
+func (b *RequestBuilder) PostToStruct(url, body string, to any, headers ...interface{}) error {
+	return b.SendRequestToStruct("POST", url, bytes.NewBuffer([]byte(body)), to, headers...)
+}
+
 func (b *RequestBuilder) SendRequest(method, url string, body io.Reader, headers ...interface{}) (*Response, error) {
+	resp, bodyResp, err := b.SendRequestRaw(method, url, body, headers...)
+	if err != nil {
+		return nil, err
+	}
+	return &Response{
+		Status:     resp.Status,
+		StatusCode: resp.StatusCode,
+		Body:       string(bodyResp),
+	}, nil
+}
+
+func (b *RequestBuilder) SendRequestToStruct(method, url string, body io.Reader, to any, headers ...interface{}) error {
+	_, data, err := b.SendRequestRaw(method, url, body, headers...)
+	if err != nil {
+		return err
+	}
+	if err := json.Unmarshal(data, to); err != nil {
+		return errors.New("fail unmarshal response: " + err.Error())
+	}
+	return nil
+}
+
+func (b *RequestBuilder) SendRequestRaw(method, url string, body io.Reader, headers ...interface{}) (*http.Response, []byte, error) {
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
-		return nil, errors.New("fail request build: " + err.Error())
+		return nil, nil, errors.New("fail request build: " + err.Error())
 	}
 	b.formRequestHeaders(req, headers)
 	resp, err := b.Do(req)
 	if err != nil {
-		return nil, errors.New("fail request send: " + err.Error())
+		return nil, nil, errors.New("fail request send: " + err.Error())
 	}
 	defer resp.Body.Close()
 
 	reader, err := httpdecompressor.Reader(resp)
 	if err != nil {
-		return nil, errors.New("fail request decompress: " + err.Error())
+		return nil, nil, errors.New("fail request decompress: " + err.Error())
 	}
 	defer reader.Close()
 	bodyResponse, err := io.ReadAll(reader)
 	if err != nil {
-		return nil, errors.New("fail response body read: " + err.Error())
+		return nil, nil, errors.New("fail response body read: " + err.Error())
 	}
-	return &Response{
-		Status:     resp.Status,
-		StatusCode: resp.StatusCode,
-		Body:       string(bodyResponse),
-	}, nil
+	return resp, bodyResponse, nil
 }
 
 func (b *RequestBuilder) formRequestHeaders(request *http.Request, headers ...interface{}) {
