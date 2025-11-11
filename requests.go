@@ -86,7 +86,8 @@ func (b *RequestBuilder) UploadFile(url, filePath string, headers ...interface{}
 	if err != nil {
 		return nil, err
 	}
-	return b.SendRequest("POST", url, bytes.NewBuffer([]byte(body)), headers...)
+	headers = append(headers, "Content-Type", body.ContentType)
+	return b.SendRequest("POST", url, body.Body, headers...)
 }
 
 func (b *RequestBuilder) UploadFileToStruct(url, filePath string, to any, headers ...interface{}) error {
@@ -94,7 +95,8 @@ func (b *RequestBuilder) UploadFileToStruct(url, filePath string, to any, header
 	if err != nil {
 		return err
 	}
-	return b.SendRequestToStruct("POST", url, bytes.NewBuffer([]byte(body)), to, headers...)
+	headers = append(headers, "Content-Type", body.ContentType)
+	return b.SendRequestToStruct("POST", url, body.Body, to, headers...)
 }
 
 func (b *RequestBuilder) SendRequestToStruct(method, url string, body io.Reader, to any, headers ...interface{}) error {
@@ -132,10 +134,10 @@ func (b *RequestBuilder) SendRequestRaw(method, url string, body io.Reader, head
 	return resp, bodyResponse, nil
 }
 
-func (b *RequestBuilder) MultipartFromFile(filePath string) (string, error) {
+func (b *RequestBuilder) MultipartFromFile(filePath string) (*Multipart, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
-		return "", fmt.Errorf("fail file open: %w", err)
+		return nil, fmt.Errorf("fail file open: %w", err)
 	}
 	defer file.Close()
 	fileName := filepath.Base(filePath)
@@ -150,17 +152,20 @@ func (b *RequestBuilder) MultipartFromFile(filePath string) (string, error) {
 	h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="file"; filename="%s"`, fileName))
 	fileWriter, err := bodyWriter.CreatePart(h)
 	if err != nil {
-		return "", fmt.Errorf("fail create part: %w", err)
+		return nil, fmt.Errorf("fail create part: %w", err)
 	}
 	_, err = io.Copy(fileWriter, file)
 	if err != nil {
-		return "", fmt.Errorf("fail copy file in writer: %w", err)
+		return nil, fmt.Errorf("fail copy file in writer: %w", err)
 	}
 	err = bodyWriter.Close()
 	if err != nil {
-		return "", fmt.Errorf("fail close multipart writer: %w", err)
+		return nil, fmt.Errorf("fail close multipart writer: %w", err)
 	}
-	return bodyBuf.String(), nil
+	return &Multipart{
+		ContentType: bodyWriter.FormDataContentType(),
+		Body:        bodyBuf,
+	}, nil
 }
 
 func (b *RequestBuilder) formRequestHeaders(request *http.Request, headers ...interface{}) {
