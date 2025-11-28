@@ -14,7 +14,7 @@ import (
 type Response struct {
 	Status     string
 	StatusCode int
-	Body       string
+	Body       []byte
 }
 
 type RequestBuilder struct {
@@ -71,7 +71,7 @@ func (b *RequestBuilder) SendRequest(method Method, url string, body io.Reader, 
 	return &Response{
 		Status:     resp.Status,
 		StatusCode: resp.StatusCode,
-		Body:       string(bodyResp),
+		Body:       bodyResp,
 	}, nil
 }
 
