@@ -78,11 +78,9 @@ func (b *RequestBuilder) SendRequest(method Method, url string, body io.Reader, 
 func (b *RequestBuilder) SendRequestToStruct(method Method, url string, body io.Reader, to any, headers ...interface{}) ([]byte, error) {
 	_, data, err := b.SendRequestRaw(method, url, body, headers...)
 	if err != nil {
-		to = nil
 		return nil, err
 	}
 	if err := json.Unmarshal(data, to); err != nil {
-		to = nil
 		return nil, errors.New("fail unmarshal response: " + err.Error())
 	}
 	return data, nil
