@@ -51,7 +51,7 @@ func (b *RequestBuilder) Get(url string, headers ...interface{}) (*Response, err
 	return b.SendRequest(GET, url, nil, headers...)
 }
 
-func (b *RequestBuilder) GetToStruct(url string, to any, headers ...interface{}) error {
+func (b *RequestBuilder) GetToStruct(url string, to any, headers ...interface{}) ([]byte, error) {
 	return b.SendRequestToStruct(GET, url, nil, to, headers...)
 }
 
@@ -59,7 +59,7 @@ func (b *RequestBuilder) Post(url, body string, headers ...interface{}) (*Respon
 	return b.SendRequest(POST, url, bytes.NewBuffer([]byte(body)), headers...)
 }
 
-func (b *RequestBuilder) PostToStruct(url, body string, to any, headers ...interface{}) error {
+func (b *RequestBuilder) PostToStruct(url, body string, to any, headers ...interface{}) ([]byte, error) {
 	return b.SendRequestToStruct(POST, url, bytes.NewBuffer([]byte(body)), to, headers...)
 }
 
@@ -75,15 +75,15 @@ func (b *RequestBuilder) SendRequest(method Method, url string, body io.Reader, 
 	}, nil
 }
 
-func (b *RequestBuilder) SendRequestToStruct(method Method, url string, body io.Reader, to any, headers ...interface{}) error {
+func (b *RequestBuilder) SendRequestToStruct(method Method, url string, body io.Reader, to any, headers ...interface{}) ([]byte, error) {
 	_, data, err := b.SendRequestRaw(method, url, body, headers...)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if err := json.Unmarshal(data, to); err != nil {
-		return errors.New("fail unmarshal response: " + err.Error())
+		return nil, errors.New("fail unmarshal response: " + err.Error())
 	}
-	return nil
+	return data, nil
 }
 
 func (b *RequestBuilder) SendRequestRaw(method Method, url string, body io.Reader, headers ...interface{}) (*http.Response, []byte, error) {
@@ -115,7 +115,7 @@ func (b *RequestBuilder) UploadMultipart(method Method, url string, data *Multip
 	return b.SendRequest(method, url, data.Body, headers...)
 }
 
-func (b *RequestBuilder) UploadMultipartToStruct(method Method, url string, data *Multipart, to any, headers ...interface{}) error {
+func (b *RequestBuilder) UploadMultipartToStruct(method Method, url string, data *Multipart, to any, headers ...interface{}) ([]byte, error) {
 	headers = append(headers, "Content-Type", data.ContentType)
 	return b.SendRequestToStruct(method, url, data.Body, to, headers...)
 }
