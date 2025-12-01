@@ -48,42 +48,36 @@ func (b *RequestBuilder) SetHeaders(headers map[string]string) {
 }
 
 func (b *RequestBuilder) Get(url string, headers ...interface{}) (*Response, error) {
-	return b.SendRequest(GET, url, nil, headers...)
+	return b.SendRequest(GET, url, nil, nil, headers...)
 }
 
-func (b *RequestBuilder) GetToStruct(url string, to any, headers ...interface{}) ([]byte, error) {
-	return b.SendRequestToStruct(GET, url, nil, to, headers...)
+func (b *RequestBuilder) GetToStruct(url string, to any, headers ...interface{}) (*Response, error) {
+	return b.SendRequest(GET, url, nil, to, headers...)
 }
 
 func (b *RequestBuilder) Post(url, body string, headers ...interface{}) (*Response, error) {
-	return b.SendRequest(POST, url, bytes.NewBuffer([]byte(body)), headers...)
+	return b.SendRequest(POST, url, bytes.NewBuffer([]byte(body)), nil, headers...)
 }
 
-func (b *RequestBuilder) PostToStruct(url, body string, to any, headers ...interface{}) ([]byte, error) {
-	return b.SendRequestToStruct(POST, url, bytes.NewBuffer([]byte(body)), to, headers...)
+func (b *RequestBuilder) PostToStruct(url, body string, to any, headers ...interface{}) (*Response, error) {
+	return b.SendRequest(POST, url, bytes.NewBuffer([]byte(body)), to, headers...)
 }
 
-func (b *RequestBuilder) SendRequest(method Method, url string, body io.Reader, headers ...interface{}) (*Response, error) {
-	resp, bodyResp, err := b.SendRequestRaw(method, url, body, headers...)
+func (b *RequestBuilder) SendRequest(method Method, url string, body io.Reader, to any, headers ...interface{}) (*Response, error) {
+	resp, data, err := b.SendRequestRaw(method, url, body, headers...)
 	if err != nil {
 		return nil, err
+	}
+	if to != nil {
+		if err := json.Unmarshal(data, to); err != nil {
+			return nil, errors.New("fail unmarshal response: " + err.Error())
+		}
 	}
 	return &Response{
 		Status:     resp.Status,
 		StatusCode: resp.StatusCode,
-		Body:       bodyResp,
+		Body:       data,
 	}, nil
-}
-
-func (b *RequestBuilder) SendRequestToStruct(method Method, url string, body io.Reader, to any, headers ...interface{}) ([]byte, error) {
-	_, data, err := b.SendRequestRaw(method, url, body, headers...)
-	if err != nil {
-		return nil, err
-	}
-	if err := json.Unmarshal(data, to); err != nil {
-		return nil, errors.New("fail unmarshal response: " + err.Error())
-	}
-	return data, nil
 }
 
 func (b *RequestBuilder) SendRequestRaw(method Method, url string, body io.Reader, headers ...interface{}) (*http.Response, []byte, error) {
@@ -112,12 +106,12 @@ func (b *RequestBuilder) SendRequestRaw(method Method, url string, body io.Reade
 
 func (b *RequestBuilder) UploadMultipart(method Method, url string, data *Multipart, headers ...interface{}) (*Response, error) {
 	headers = append(headers, "Content-Type", data.ContentType)
-	return b.SendRequest(method, url, data.Body, headers...)
+	return b.SendRequest(method, url, data.Body, nil, headers...)
 }
 
-func (b *RequestBuilder) UploadMultipartToStruct(method Method, url string, data *Multipart, to any, headers ...interface{}) ([]byte, error) {
+func (b *RequestBuilder) UploadMultipartToStruct(method Method, url string, data *Multipart, to any, headers ...interface{}) (*Response, error) {
 	headers = append(headers, "Content-Type", data.ContentType)
-	return b.SendRequestToStruct(method, url, data.Body, to, headers...)
+	return b.SendRequest(method, url, data.Body, to, headers...)
 }
 
 func (b *RequestBuilder) formRequestHeaders(request *http.Request, headers ...interface{}) {
